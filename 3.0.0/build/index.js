@@ -3,7 +3,7 @@
  * @author 伯才<xiaoqi.huxq@alibaba-inc.com>
  * @module xslide
  **/
-KISSY.add('kg/xtab/2.0.0/index',function(S,Node,Base,Util,XScroll,Event,Tap){
+KISSY.add('kg/xtab/3.0.0/index',function(S,Node,Base,Util,XScroll){
 var $ = Node.all;
 var transitionEnd = Util.vendor ? Util.prefixStyle("transitionEnd") : "transitionend";
     var indexOf = function(el, list) {
@@ -39,11 +39,17 @@ var transitionEnd = Util.vendor ? Util.prefixStyle("transitionEnd") : "transitio
         self.init();
     }
 
+    function getEl(el){
+        if(!el) return;
+        return typeof el === "string" ? document.querySelector(el) : el;
+    }
+
+
     Util.extend(XTab, Base, {
         init: function() {
             var self = this;
             var cfg = self.cfg;
-            self.renderTo = document.querySelector(cfg.renderTo);
+            self.renderTo = getEl(cfg.renderTo);
             //导航
             self.navContainer = self.renderTo.querySelector(".xtab-nav-container");
             self.items = self.navContainer.querySelectorAll(self.cfg.itemsSelector);
@@ -54,10 +60,12 @@ var transitionEnd = Util.vendor ? Util.prefixStyle("transitionEnd") : "transitio
                 self.itemData.push(self.items[i].innerHTML);
             }
             self.xscroll = new XScroll({
+                preventDefault:false,
                 renderTo: self.navContainer,
                 scrollbarX: false,
                 scrollbarY: false,
-                lockY: true
+                lockY: true,
+                lockX:false
             });
         },
         switchTo: function(index) {
@@ -81,19 +89,19 @@ var transitionEnd = Util.vendor ? Util.prefixStyle("transitionEnd") : "transitio
             if(self.cfg.scrollDelay){
                 window.clearTimeout(self.delayTimer);
                 self.delayTimer = window.setTimeout(function(){
-                    self.xscroll.scrollX(offset, self.cfg.duration);
+                    self.xscroll.scrollLeft(offset, self.cfg.duration);
                 },self.cfg.scrollDelay);
             }else{
-                self.xscroll.scrollX(offset, self.cfg.duration);
+                self.xscroll.scrollLeft(offset, self.cfg.duration);
             }
 
             
             self.curIndex = index;
-            self.fire("switch", {
+            self.trigger("switch", {
                 curIndex: index
             });
             if (self.curIndex !== self.prevIndex) {
-                self.fire("switchchange", {
+                self.trigger("switchchange", {
                     prevIndex: self.prevIndex,
                     curIndex: self.curIndex
                 })
@@ -120,7 +128,7 @@ var transitionEnd = Util.vendor ? Util.prefixStyle("transitionEnd") : "transitio
             var self = this;
             if (self._isEvtBind) return;
             self._isEvtBind = true;
-            self.xscroll.on("click", function(e) {
+            self.xscroll.on("tap", function(e) {
                 e.preventDefault();
                 var $tgt = $(e.target);
                 if (!$tgt.hasClass("xtab-item")) {
@@ -129,13 +137,21 @@ var transitionEnd = Util.vendor ? Util.prefixStyle("transitionEnd") : "transitio
                 if (!$tgt) return;
                 var index = indexOf($tgt[0], self.items);
                 self.switchTo(index);
-
             });
 
-
-            self.btnSlide && Event.on(self.btnSlide,Tap.TAP,function(e){
+            self.btnSlide && new Hammer(self.btnSlide).on('tap', function(e) {
+                e.preventDefault();
                 self.toggleSide();
-            })
+            });
+
+            self.pop && new Hammer(self.pop).on("tap",function(e){
+                e.preventDefault();
+                if (e.target.tagName.toLowerCase() == "li") {
+                    var index = indexOf(e.target, self.popItems);
+                    self.switchTo(index);
+                    self.slideUp();
+                }
+            });
 
             self.mask && self.mask.addEventListener("touchstart", function(e) {
                 e.preventDefault();
@@ -156,17 +172,11 @@ var transitionEnd = Util.vendor ? Util.prefixStyle("transitionEnd") : "transitio
                 e.preventDefault();
             });
 
-            self.pop && Event.on(self.pop,Tap.TAP,function(e){
-                e.preventDefault();
-                if (e.target.tagName.toLowerCase() == "li") {
-                    var index = indexOf(e.target, self.popItems);
-                    self.switchTo(index);
-                    self.slideUp();
-                }
-            })
+            
         },
         render: function() {
             var self = this;
+            if(!self.xscroll) return;
             self.xscroll.render();
             self._renderPop();
             self.mask && Util.addClass(self.mask, "xtab-mask");
@@ -200,7 +210,7 @@ var transitionEnd = Util.vendor ? Util.prefixStyle("transitionEnd") : "transitio
         _renderMask: function() {
             var self = this;
             if(!self.cfg.mask) return;
-            self.mask = self.cfg.maskNode && document.querySelector(self.cfg.maskNode);
+            self.mask = self.cfg.maskNode && getEl(self.cfg.maskNode);
             if (!self.mask) {
                 self.mask = document.createElement("div");
                 self.mask.style.display = "none";
@@ -227,4 +237,6 @@ var transitionEnd = Util.vendor ? Util.prefixStyle("transitionEnd") : "transitio
     });
 return XTab;
 
-},{requires:['node','kg/xscroll/2.3.1/base','kg/xscroll/2.3.1/util','kg/xscroll/2.3.1/core','kg/xscroll/2.3.1/event','kg/xscroll/2.3.1/tap']});
+},{requires:['node','kg/xscroll/3.0.0/base','kg/xscroll/3.0.0/util','kg/xscroll/3.0.0/xscroll']});
+
+
